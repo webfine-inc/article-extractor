@@ -1,18 +1,18 @@
 import os
 import concurrent.futures
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, Response
 from extractor import ContentExtractor
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
 
-# Instantiate a single extractor (thread-safe for read-only ops; requests Session is per-thread)
+# 単一インスタンス（内部でHTTPはスレッドごとに行う）
 extractor = ContentExtractor()
 
-+@app.route("/health", methods=["GET"])
-+def health():
-+    return "ok", 200
-+
+@app.route("/health", methods=["GET"])
+def health():
+    return "ok", 200
+
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
@@ -20,10 +20,10 @@ def index():
 @app.route("/extract", methods=["POST"])
 def extract():
     """
-    Accepts:
-      - form-encoded: urls (string, 1 URL per line), prefer_alt ("on"|"off")
-      - or JSON: {"urls": "http://a\nhttp://b", "prefer_alt": true}
-    Returns: text/plain of concatenated results in the specified template
+    受け取り:
+      - form: urls(1行=1URL), prefer_alt(on/off)
+      - JSON: {"urls":"http://a\nhttp://b", "prefer_alt": true}
+    返却: 指定テンプレの text/plain
     """
     if request.is_json:
         data = request.get_json(silent=True) or {}
@@ -33,11 +33,11 @@ def extract():
         raw_urls = request.form.get("urls", "") or ""
         prefer_alt = (request.form.get("prefer_alt") in ("on", "true", "1", True))
 
-    # normalize and dedupe while preserving order
+    # 正規化＆重複除去（順序保持）
     seen = set()
     urls = []
     for line in raw_urls.splitlines():
-        u = line.strip()
+        u = (line or "").strip()
         if not u:
             continue
         if u not in seen:
@@ -47,15 +47,17 @@ def extract():
     if not urls:
         return Response("ERROR: no_urls\n", mimetype="text/plain; charset=utf-8")
 
-    # Process in parallel (IO-bound)
     results = []
+
     def process(u):
         try:
             return extractor.extract_to_template(u, prefer_alt=prefer_alt)
         except Exception as e:
+            # URL単位で継続
             return f"BEGIN\nURL: {u}\nERROR: content_not_found ({type(e).__name__})\nEND"
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, max(2, os.cpu_count() or 2))) as ex:
+    max_workers = min(8, max(2, os.cpu_count() or 2))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
         for out in ex.map(process, urls):
             results.append(out)
 
@@ -64,7 +66,5 @@ def extract():
 
 
 if __name__ == "__main__":
-    # Local dev server
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port, debug=True)
-
