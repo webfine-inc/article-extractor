@@ -15,13 +15,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
 
 # Non-root (optional)
 # RUN useradd -ms /bin/bash appuser
 # USER appuser
 
-EXPOSE 8080
+# EXPOSE は Render では無視されるため不要（残っていても動作には影響しません）
+# EXPOSE 8080
 
 # Gunicorn config file is included
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
+
