@@ -9,6 +9,10 @@ app.config["JSON_AS_ASCII"] = False
 # Instantiate a single extractor (thread-safe for read-only ops; requests Session is per-thread)
 extractor = ContentExtractor()
 
++@app.route("/health", methods=["GET"])
++def health():
++    return "ok", 200
++
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
@@ -49,7 +53,7 @@ def extract():
         try:
             return extractor.extract_to_template(u, prefer_alt=prefer_alt)
         except Exception as e:
-            return f"BEGIN\nURL: {u}\nERROR: content_not_found ({type(e).__name__})\END"
+            return f"BEGIN\nURL: {u}\nERROR: content_not_found ({type(e).__name__})\nEND"
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, max(2, os.cpu_count() or 2))) as ex:
         for out in ex.map(process, urls):
@@ -63,3 +67,4 @@ if __name__ == "__main__":
     # Local dev server
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port, debug=True)
+
