@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>本文抽出ツール（Flask）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <style>
+    :root { --fg:#111; --bg:#fff; --muted:#666; --border:#e5e7eb; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; color: var(--fg); background: var(--bg); }
+    header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    header h1 { margin: 0 0 6px; font-size: 20px; }
+    header p { margin: 0; color: var(--muted); font-size: 13px; }
+    main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    textarea { width: 100%; min-height: 160px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    button { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: #111; color: #fff; cursor: pointer; font-weight: 600; }
+    button.ghost { background: #fff; color: #111; }
+    label { font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    .result-wrap { position: relative; }
+    .copy-btn { position: absolute; top: 8px; right: 8px; }
+    .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid #fff; border-bottom-color: transparent;
+      border-radius: 50%; display: inline-block; animation: rotation 0.8s linear infinite; vertical-align: -2px;
+    }
+    @keyframes rotation { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>記事本文抽出（readability/trafilatura/lxml/bs4）</h1>
+    <p>1行=1URLで貼り付け → 抽出。ノイズ要素はクラス/ID正規表現で除去、h2〜h5/段落/箇条書き/引用/コード/表を整形してプレーンテキスト化します。</p>
+  </header>
+  <main>
+    <div class="grid">
+      <section>
+        <label for="urls">URL一覧</label>
+        <textarea id="urls" placeholder="https://example.com/article-1
+https://example.com/article-2"></textarea>
+        <div class="row">
+          <label><input id="prefer_alt" type="checkbox" checked> AMP/印刷版を優先（ある場合）</label>
+          <span class="hint">AMP/print版で本文が長い場合は自動で切替</span>
+        </div>
+        <div class="row">
+          <button id="runBtn"><span id="runIcon">抽出する</span></button>
+          <button id="clearBtn" class="ghost">クリア</button>
+        </div>
+      </section>
+
+      <section class="result-wrap">
+        <label for="result">結果（コピー可能）</label>
+        <button class="copy-btn" id="copyBtn">コピー</button>
+        <textarea id="result" readonly placeholder="BEGIN
+URL: ...
+Title: ...
+H2: ...
+Body:
+...
+END"></textarea>
+        <div class="footer">出力は「BEGIN/END, Title, H2〜H5, Body」テンプレート。URL単位でエラーがあっても継続します（ERROR: content_not_found）。</div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
